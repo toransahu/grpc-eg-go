@@ -43,7 +43,7 @@ func (s *MachineServer) Execute(ctx context.Context, instructions *machine.Instr
 		operator := instruction.GetOperator()
 		op_type := OperatorType(operator)
 
-		fmt.Printf("Operand: %v, Operator: %v", operand, operator)
+		fmt.Printf("Operand: %v, Operator: %v\n", operand, operator)
 
 		switch op_type {
 		case PUSH:
