@@ -21,7 +21,7 @@ $ protoc -I=$SRC_DIR --go_out=plugins=grpc:$DST_DIR $SRC_DIR/machine/machine.pro
 # Run
 ```bash
 ~/grpc-eg-go
-$ go run server/main.go
-$ go run client/main.go
+$ go run cmd/run_machine_server.go
+$ go run client/machine.go
 ```
 
