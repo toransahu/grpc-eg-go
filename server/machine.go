@@ -50,7 +50,7 @@ func (s *MachineServer) Execute(ctx context.Context, instructions *machine.Instr
 			stack.Push(float32(operand))
 		case POP:
 			stack.Pop()
-		case ADD, MUL, DIV:
+		case ADD, SUB, MUL, DIV:
 			item2, popped := stack.Pop()
 			item1, popped := stack.Pop()
 
@@ -60,6 +60,8 @@ func (s *MachineServer) Execute(ctx context.Context, instructions *machine.Instr
 
 			if op_type == ADD {
 				stack.Push(item1 + item2)
+			} else if op_type == SUB {
+				stack.Push(item1 - item2)
 			} else if op_type == MUL {
 				stack.Push(item1 * item2)
 			} else if op_type == DIV {
