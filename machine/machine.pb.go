@@ -160,7 +160,7 @@ func init() {
 }
 
 var fileDescriptor_84b4f59d98cc997c = []byte{
-	// 196 bytes of a gzipped FileDescriptorProto
+	// 221 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x12, 0xcd, 0x4d, 0x4c, 0xce,
 	0xc8, 0xcc, 0x4b, 0xd5, 0x87, 0xd2, 0x7a, 0x05, 0x45, 0xf9, 0x25, 0xf9, 0x42, 0xec, 0x50, 0xae,
 	0x92, 0x33, 0x17, 0xb7, 0x67, 0x5e, 0x71, 0x49, 0x51, 0x69, 0x72, 0x49, 0x66, 0x7e, 0x9e, 0x90,
@@ -170,10 +170,11 @@ var fileDescriptor_84b4f59d98cc997c = []byte{
 	0xf1, 0x64, 0x22, 0x44, 0x8a, 0x25, 0x18, 0x15, 0x98, 0x35, 0xb8, 0x8d, 0x44, 0xf4, 0x60, 0xae,
 	0x40, 0x52, 0x1e, 0x84, 0xa2, 0x52, 0x49, 0x81, 0x8b, 0x2d, 0x28, 0xb5, 0xb8, 0x34, 0xa7, 0x44,
 	0x48, 0x8c, 0x8b, 0x2d, 0xbf, 0xb4, 0xa4, 0xa0, 0xb4, 0x04, 0xec, 0x12, 0xa6, 0x20, 0x28, 0xcf,
-	0xc8, 0x81, 0x8b, 0xdd, 0x17, 0x62, 0x8c, 0x90, 0x29, 0x17, 0xbb, 0x6b, 0x45, 0x6a, 0x72, 0x69,
-	0x49, 0xaa, 0x90, 0x38, 0x36, 0xb3, 0x83, 0x53, 0x4b, 0xa4, 0xf8, 0xe1, 0x12, 0x10, 0x73, 0x95,
-	0x18, 0x92, 0xd8, 0xc0, 0x81, 0x60, 0x0c, 0x08, 0x00, 0x00, 0xff, 0xff, 0x19, 0x7f, 0x99, 0xca,
-	0x1d, 0x01, 0x00, 0x00,
+	0xa8, 0x83, 0x91, 0x8b, 0xdd, 0x17, 0x62, 0x8e, 0x90, 0x29, 0x17, 0xbb, 0x6b, 0x45, 0x6a, 0x72,
+	0x69, 0x49, 0xaa, 0x90, 0x38, 0x36, 0xc3, 0x83, 0x53, 0x4b, 0xa4, 0xf8, 0xe1, 0x12, 0x10, 0x83,
+	0x95, 0x18, 0x84, 0xdc, 0xb8, 0xc4, 0x82, 0x53, 0x8b, 0xca, 0x52, 0x8b, 0x82, 0x4b, 0x8a, 0x52,
+	0x13, 0x73, 0x33, 0xf3, 0xd2, 0xc9, 0x30, 0xc5, 0x80, 0x31, 0x89, 0x0d, 0x1c, 0x9a, 0xc6, 0x80,
+	0x00, 0x00, 0x00, 0xff, 0xff, 0x63, 0x6a, 0x46, 0x1f, 0x66, 0x01, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -189,6 +190,7 @@ const _ = grpc.SupportPackageIsVersion6
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type MachineClient interface {
 	Execute(ctx context.Context, in *InstructionSet, opts ...grpc.CallOption) (*Result, error)
+	ServerStreamingExecute(ctx context.Context, in *InstructionSet, opts ...grpc.CallOption) (Machine_ServerStreamingExecuteClient, error)
 }
 
 type machineClient struct {
@@ -208,9 +210,42 @@ func (c *machineClient) Execute(ctx context.Context, in *InstructionSet, opts ..
 	return out, nil
 }
 
+func (c *machineClient) ServerStreamingExecute(ctx context.Context, in *InstructionSet, opts ...grpc.CallOption) (Machine_ServerStreamingExecuteClient, error) {
+	stream, err := c.cc.NewStream(ctx, &_Machine_serviceDesc.Streams[0], "/machine.Machine/ServerStreamingExecute", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &machineServerStreamingExecuteClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type Machine_ServerStreamingExecuteClient interface {
+	Recv() (*Result, error)
+	grpc.ClientStream
+}
+
+type machineServerStreamingExecuteClient struct {
+	grpc.ClientStream
+}
+
+func (x *machineServerStreamingExecuteClient) Recv() (*Result, error) {
+	m := new(Result)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // MachineServer is the server API for Machine service.
 type MachineServer interface {
 	Execute(context.Context, *InstructionSet) (*Result, error)
+	ServerStreamingExecute(*InstructionSet, Machine_ServerStreamingExecuteServer) error
 }
 
 // UnimplementedMachineServer can be embedded to have forward compatible implementations.
@@ -219,6 +254,9 @@ type UnimplementedMachineServer struct {
 
 func (*UnimplementedMachineServer) Execute(ctx context.Context, req *InstructionSet) (*Result, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Execute not implemented")
+}
+func (*UnimplementedMachineServer) ServerStreamingExecute(req *InstructionSet, srv Machine_ServerStreamingExecuteServer) error {
+	return status.Errorf(codes.Unimplemented, "method ServerStreamingExecute not implemented")
 }
 
 func RegisterMachineServer(s *grpc.Server, srv MachineServer) {
@@ -243,6 +281,27 @@ func _Machine_Execute_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Machine_ServerStreamingExecute_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(InstructionSet)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(MachineServer).ServerStreamingExecute(m, &machineServerStreamingExecuteServer{stream})
+}
+
+type Machine_ServerStreamingExecuteServer interface {
+	Send(*Result) error
+	grpc.ServerStream
+}
+
+type machineServerStreamingExecuteServer struct {
+	grpc.ServerStream
+}
+
+func (x *machineServerStreamingExecuteServer) Send(m *Result) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 var _Machine_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "machine.Machine",
 	HandlerType: (*MachineServer)(nil),
@@ -252,6 +311,12 @@ var _Machine_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Machine_Execute_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "ServerStreamingExecute",
+			Handler:       _Machine_ServerStreamingExecute_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "machine/machine.proto",
 }
