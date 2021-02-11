@@ -10,6 +10,7 @@ package main
 import (
 	"context"
 	"flag"
+	"io"
 	"log"
 	"time"
 
@@ -32,6 +33,30 @@ func runExecute(client machine.MachineClient, instructions *machine.InstructionS
 	log.Println(result)
 }
 
+func runServerStreamingExecute(client machine.MachineClient, instructions *machine.InstructionSet) {
+	log.Printf("Executing %v", instructions)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	stream, err := client.ServerStreamingExecute(ctx, instructions)
+	if err != nil {
+		log.Fatalf("%v.Execute(_) = _, %v: ", client, err)
+	}
+	for {
+		result, err := stream.Recv()
+		if err == io.EOF {
+			log.Println("EOF")
+			break
+		}
+		if err != nil {
+			log.Printf("Err: %v", err)
+			break
+		}
+		log.Printf("output: %v", result.GetOutput())
+	}
+	log.Println("DONE!")
+
+}
+
 func main() {
 	flag.Parse()
 	var opts []grpc.DialOption
@@ -50,4 +75,11 @@ func main() {
 	instructions = append(instructions, &machine.Instruction{Operand: 6, Operator: "PUSH"})
 	instructions = append(instructions, &machine.Instruction{Operator: "MUL"})
 	runExecute(client, &machine.InstructionSet{Instructions: instructions})
+
+	// try ServerStreamingExecute()
+	instructions = []*machine.Instruction{}
+	instructions = append(instructions, &machine.Instruction{Operand: 6, Operator: "PUSH"})
+	instructions = append(instructions, &machine.Instruction{Operator: "FIB"})
+	runServerStreamingExecute(client, &machine.InstructionSet{Instructions: instructions})
+
 }
