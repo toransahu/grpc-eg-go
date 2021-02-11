@@ -80,3 +80,8 @@ func (s *MachineServer) Execute(ctx context.Context, instructions *machine.Instr
 	}
 	return &machine.Result{Output: item}, nil
 }
+
+// ServerStreamingExecute runs the set of instructions given and streams a sequence of Results.
+func (s *MachineServer) ServerStreamingExecute(instructions *machine.InstructionSet, stream machine.Machine_ServerStreamingExecuteServer) error {
+	return status.Error(codes.Unimplemented, "ServerStreamingExecute() not implemented yet")
+}
