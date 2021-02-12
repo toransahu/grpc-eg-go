@@ -32,6 +32,11 @@ func testExecute(t *testing.T, client machine.MachineClient) {
 		log.Fatalf("%v.Execute(_) = _, %v: ", client, err)
 	}
 	log.Println(result)
+	got := result.GetOutput()
+	want := float32(30)
+	if got != want {
+		t.Errorf("got %v, want %v", got, want)
+	}
 }
 
 func TestExecute(t *testing.T) {
