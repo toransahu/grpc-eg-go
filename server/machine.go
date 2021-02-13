@@ -8,8 +8,8 @@
 package server
 
 import (
-	"context"
 	"fmt"
+	"io"
 	"log"
 
 	"github.com/toransahu/grpc-eg-go/machine"
@@ -34,14 +34,29 @@ const (
 type MachineServer struct{}
 
 // Execute runs the set of instructions given.
-func (s *MachineServer) Execute(ctx context.Context, instructions *machine.InstructionSet) (*machine.Result, error) {
-	if len(instructions.GetInstructions()) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "No valid instructions received")
-	}
-
+func (s *MachineServer) Execute(stream machine.Machine_ExecuteServer) error {
 	var stack stack.Stack
+	for {
+		instruction, err := stream.Recv()
+		if err == io.EOF {
+			log.Println("EOF")
+			output, popped := stack.Pop()
+			if !popped {
+				return status.Error(codes.Aborted, "Invalid sets of instructions. Execution aborted")
+			}
 
-	for _, instruction := range instructions.GetInstructions() {
+			if err := stream.SendAndClose(&machine.Result{
+				Output: output,
+			}); err != nil {
+				return err
+			}
+
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+
 		operand := instruction.GetOperand()
 		operator := instruction.GetOperator()
 		op_type := OperatorType(operator)
@@ -58,7 +73,7 @@ func (s *MachineServer) Execute(ctx context.Context, instructions *machine.Instr
 			item1, popped := stack.Pop()
 
 			if !popped {
-				return &machine.Result{}, status.Error(codes.Aborted, "Invalide sets of instructions. Execution aborted")
+				return status.Error(codes.Aborted, "Invalid sets of instructions. Execution aborted")
 			}
 
 			if op_type == ADD {
@@ -72,16 +87,10 @@ func (s *MachineServer) Execute(ctx context.Context, instructions *machine.Instr
 			}
 
 		default:
-			return nil, status.Errorf(codes.Unimplemented, "Operation '%s' not implemented yet", operator)
+			return status.Errorf(codes.Unimplemented, "Operation '%s' not implemented yet", operator)
 		}
 
 	}
-
-	item, popped := stack.Pop()
-	if !popped {
-		return &machine.Result{}, status.Error(codes.Aborted, "Invalide sets of instructions. Execution aborted")
-	}
-	return &machine.Result{Output: item}, nil
 }
 
 // ServerStreamingExecute runs the set of instructions given and streams a sequence of Results.
