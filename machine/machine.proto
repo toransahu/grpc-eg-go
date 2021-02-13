@@ -3,7 +3,7 @@ package machine;
  
 
 service Machine {
-    rpc Execute(InstructionSet) returns (Result) {}
+    rpc Execute(stream Instruction) returns (Result) {}
     rpc ServerStreamingExecute(InstructionSet) returns (stream Result) {}
 }
 
