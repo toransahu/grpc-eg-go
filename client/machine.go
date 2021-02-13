@@ -23,12 +23,21 @@ var (
 )
 
 func runExecute(client machine.MachineClient, instructions *machine.InstructionSet) {
-	log.Printf("Executing %v", instructions)
+	log.Printf("Streaming %v", instructions)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	result, err := client.Execute(ctx, instructions)
+	stream, err := client.Execute(ctx)
 	if err != nil {
-		log.Fatalf("%v.Execute(_) = _, %v: ", client, err)
+		log.Fatalf("%v.Execute(ctx) = %v, %v: ", client, stream, err)
+	}
+	for _, instruction := range instructions.GetInstructions() {
+		if err := stream.Send(instruction); err != nil {
+			log.Fatalf("%v.Send(%v) = %v: ", stream, instruction, err)
+		}
+	}
+	result, err := stream.CloseAndRecv()
+	if err != nil {
+		log.Fatalf("%v.CloseAndRecv() got error %v, want %v", stream, err, nil)
 	}
 	log.Println(result)
 }
