@@ -3,17 +3,12 @@ package machine;
  
 
 service Machine {
-    rpc Execute(stream Instruction) returns (Result) {}
-    rpc ServerStreamingExecute(InstructionSet) returns (stream Result) {}
+    rpc Execute(stream Instruction) returns (stream Result) {}
 }
 
 message Instruction {
     string operator = 1;
     int32 operand = 2;
-}
-
-message InstructionSet {
-    repeated Instruction instructions = 1;
 }
 
 message Result {
