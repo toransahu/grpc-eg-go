@@ -28,11 +28,20 @@ func testExecute(t *testing.T, client machine.MachineClient) {
 	instructions = append(instructions, &machine.Instruction{Operand: 6, Operator: "PUSH"})
 	instructions = append(instructions, &machine.Instruction{Operator: "MUL"})
 
-	result, err := client.Execute(ctx, &machine.InstructionSet{Instructions: instructions})
+	stream, err := client.Execute(ctx)
 	if err != nil {
-		log.Fatalf("%v.Execute(_) = _, %v: ", client, err)
+		log.Fatalf("%v.Execute(%v) = _, %v: ", client, ctx, err)
 	}
-	log.Println(result)
+	for _, instruction := range instructions {
+		if err := stream.Send(instruction); err != nil {
+			log.Fatalf("%v.Send(%v) = %v: ", stream, instruction, err)
+		}
+	}
+	result, err := stream.CloseAndRecv()
+	if err != nil {
+		log.Fatalf("%v.CloseAndRecv() got error %v, want %v", stream, err, nil)
+	}
+
 	got := result.GetOutput()
 	want := float32(30)
 	if got != want {
@@ -45,17 +54,13 @@ func TestExecute(t *testing.T) {
 	defer ctrl.Finish()
 	mockMachineClient := mock_machine.NewMockMachineClient(ctrl)
 
-	instructions := []*machine.Instruction{}
-	instructions = append(instructions, &machine.Instruction{Operand: 5, Operator: "PUSH"})
-	instructions = append(instructions, &machine.Instruction{Operand: 6, Operator: "PUSH"})
-	instructions = append(instructions, &machine.Instruction{Operator: "MUL"})
-
-	instructionSet := &machine.InstructionSet{Instructions: instructions}
+	mockClientStream := mock_machine.NewMockMachine_ExecuteClient(ctrl)
+	mockClientStream.EXPECT().Send(gomock.Any()).Return(nil).AnyTimes()
+	mockClientStream.EXPECT().CloseAndRecv().Return(&machine.Result{Output: 30}, nil)
 
 	mockMachineClient.EXPECT().Execute(
-		gomock.Any(),   // context
-		instructionSet, // rpc uniary message
-	).Return(&machine.Result{Output: 30}, nil)
+		gomock.Any(), // context
+	).Return(mockClientStream, nil)
 
 	testExecute(t, mockMachineClient)
 }
