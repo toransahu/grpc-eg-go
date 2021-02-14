@@ -8,7 +8,7 @@
 package server
 
 import (
-	"context"
+	"io"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -19,40 +19,29 @@ import (
 func TestExecute(t *testing.T) {
 	s := MachineServer{}
 
-	// set up test cases
-	instruction_set_1 := []*machine.Instruction{}
-	instruction_set_1 = append(instruction_set_1, &machine.Instruction{Operand: 5, Operator: "PUSH"})
-	instruction_set_1 = append(instruction_set_1, &machine.Instruction{Operand: 6, Operator: "PUSH"})
-	instruction_set_1 = append(instruction_set_1, &machine.Instruction{Operator: "ADD"})
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockServerStream := mock_machine.NewMockMachine_ExecuteServer(ctrl)
 
-	instruction_set_2 := []*machine.Instruction{}
-	instruction_set_2 = append(instruction_set_2, &machine.Instruction{Operand: 5, Operator: "PUSH"})
-	instruction_set_2 = append(instruction_set_2, &machine.Instruction{Operand: 6, Operator: "PUSH"})
-	instruction_set_2 = append(instruction_set_2, &machine.Instruction{Operator: "MUL"})
+	mockResult := &machine.Result{}
+	callRecv1 := mockServerStream.EXPECT().Recv().Return(&machine.Instruction{Operand: 5, Operator: "PUSH"}, nil)
+	callRecv2 := mockServerStream.EXPECT().Recv().Return(&machine.Instruction{Operand: 6, Operator: "PUSH"}, nil).After(callRecv1)
+	callRecv3 := mockServerStream.EXPECT().Recv().Return(&machine.Instruction{Operator: "MUL"}, nil).After(callRecv2)
+	mockServerStream.EXPECT().Recv().Return(nil, io.EOF).After(callRecv3)
+	mockServerStream.EXPECT().SendAndClose(gomock.Any()).DoAndReturn(
+		func(result *machine.Result) error {
+			mockResult = result
+			return nil
+		})
 
-	tests := []struct {
-		instructions []*machine.Instruction
-		want         float32
-	}{
-		{
-			instructions: instruction_set_1,
-			want:         11,
-		},
-		{
-			instructions: instruction_set_2,
-			want:         30,
-		},
+	err := s.Execute(mockServerStream)
+	if err != nil {
+		t.Errorf("Execute(%v) got unexpected error: %v", mockServerStream, err)
 	}
-
-	for _, tt := range tests {
-		req := &machine.InstructionSet{Instructions: tt.instructions}
-		resp, err := s.Execute(context.Background(), req)
-		if err != nil {
-			t.Errorf("ExecuteTest(%v) got unexpected error", tt.instructions)
-		}
-		if resp.Output != tt.want {
-			t.Errorf("got Execute(%v)=%v, wanted %v", tt.instructions, resp.Output, tt.want)
-		}
+	got := mockResult.GetOutput()
+	want := float32(30)
+	if got != want {
+		t.Errorf("got %v, wanted %v", got, want)
 	}
 }
 
